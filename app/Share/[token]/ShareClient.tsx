@@ -125,7 +125,7 @@ export default function ShareClient({ trip, days }: Props) {
             ) : (
               selectedDay?.stops?.map((stop, index) => {
                 const cat =
-                  CATEGORY_CONFIG[stop.category] || CATEGORY_CONFIG.other;
+                  CATEGORY_CONFIG[stop.category || 'other'] || CATEGORY_CONFIG.other;
                 return (
                   <div
                     key={stop.id}
