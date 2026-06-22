@@ -17,6 +17,6 @@ export const getGoogleMapsLoader = () => {
 export const loadGoogleMaps = async () => {
   if (isLoaded) return;
   const loader = getGoogleMapsLoader();
-  await loader.loadScript();
+  await loader.loadPromise;
   isLoaded = true;
 };
