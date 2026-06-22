@@ -80,7 +80,7 @@ export default function AddStopModal({ onClose, onAdd, dayLabel }: Props) {
       return;
     }
 
-    clearTimeout(searchTimeout.current);
+   if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
       setSearching(true);
       autocompleteService.current!.getPlacePredictions(
