@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useRef, useState } from 'react';
 import { TripDayWithStops, Stop } from '@/lib/types';
 import { loadGoogleMaps } from '@/lib/google-maps/loader';
@@ -85,21 +84,34 @@ export default function TripMap({
 
       // Draw polyline connecting stops
       if (stops.length > 1) {
-        const path = stops.map((s) => ({ lat: s.lat || s.latitude, lng: s.lng || s.longitude }));
-        const polyline = new google.maps.Polyline({
-          path,
-          geodesic: true,
-          strokeColor: color,
-          strokeOpacity: 0.7,
-          strokeWeight: 3,
-          map,
-        });
-        polylinesRef.current.push(polyline);
+        const path = stops
+          .filter((s) => s.latitude !== undefined && s.longitude !== undefined)
+          .map((s) => ({ 
+            lat: s.latitude as number, 
+            lng: s.longitude as number 
+          }));
+        
+        if (path.length > 1) {
+          const polyline = new google.maps.Polyline({
+            path,
+            geodesic: true,
+            strokeColor: color,
+            strokeOpacity: 0.7,
+            strokeWeight: 3,
+            map,
+          });
+          polylinesRef.current.push(polyline);
+        }
       }
 
       // Draw markers
       stops.forEach((stop, stopIndex) => {
-        const position = { lat: stop.lat || stop.latitude, lng: stop.lng || stop.longitude };
+        const lat = stop.latitude || stop.lat;
+        const lng = stop.longitude || stop.lng;
+
+        if (lat === undefined || lng === undefined) return;
+
+        const position = { lat, lng };
         bounds.extend(position);
         hasPoints = true;
 
@@ -164,7 +176,7 @@ export default function TripMap({
         map.setCenter(bounds.getCenter());
         map.setZoom(14);
       } else {
-       map.fitBounds(bounds);
+        map.fitBounds(bounds);
       }
     }
   }, [mapsLoaded, days, selectedDayId, onMarkerClick]);
@@ -173,8 +185,13 @@ export default function TripMap({
   useEffect(() => {
     if (!focusStop || !googleMapRef.current || !mapsLoaded) return;
 
-    googleMapRef.current.setCenter({ lat: focusStop.lat, lng: focusStop.lng });
-    googleMapRef.current.setZoom(15);
+    const lat = focusStop.latitude || focusStop.lat;
+    const lng = focusStop.longitude || focusStop.lng;
+
+    if (lat !== undefined && lng !== undefined) {
+      googleMapRef.current.setCenter({ lat, lng });
+      googleMapRef.current.setZoom(15);
+    }
   }, [focusStop, mapsLoaded]);
 
   return (
