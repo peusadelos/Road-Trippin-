@@ -85,7 +85,7 @@ export default function TripMap({
 
       // Draw polyline connecting stops
       if (stops.length > 1) {
-        const path = stops.map((s) => ({ lat: s.lat, lng: s.lng }));
+        const path = stops.map((s) => ({ lat: s.lat || s.latitude, lng: s.lng || s.longitude }));
         const polyline = new google.maps.Polyline({
           path,
           geodesic: true,
