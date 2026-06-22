@@ -62,4 +62,4 @@ export interface ShareToken {
   expires_at?: string;
 }
 
-export type Category = 'attraction' | 'food' | 'hotel' | 'nature' | 'activity' | 'shopping' | 'other';
+export type Category = 'attraction' | 'food' | 'hotel' | 'nature' | 'activity' | 'shopping' | 'transport' | 'other';
