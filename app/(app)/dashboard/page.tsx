@@ -3,11 +3,10 @@ import { redirect } from 'next/navigation';
 import DashboardClient from './DashboardClient';
 
 export default async function DashboardPage() {
-  const supabase = createServerClient();
-
+  const supabase = await createServerClient();
   const {
-  data: { session },
-} = await (await supabase).auth.getSession();
+    data: { session },
+  } = await supabase.auth.getSession();
 
   if (!session) redirect('/login');
 
