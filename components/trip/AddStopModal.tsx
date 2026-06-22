@@ -99,7 +99,9 @@ export default function AddStopModal({ onClose, onAdd, dayLabel }: Props) {
       );
     }, 400);
 
-    return () => clearTimeout(searchTimeout.current);
+    return () => {
+  if (searchTimeout.current) clearTimeout(searchTimeout.current);
+};
   }, [query, mapsReady]);
 
   const handleSelectPrediction = (
