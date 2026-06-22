@@ -61,10 +61,10 @@ export default function StopDetailModal({
   const handleSave = async () => {
     setSaving(true);
     await onUpdate(stop.id, {
-      notes: editNotes || null,
+      notes: editNotes || undefined,
       category: editCategory,
-      start_time: editStartTime || null,
-      duration_minutes: editDuration ? parseInt(editDuration) : null,
+      start_time: editStartTime || undefined,
+      duration_minutes: editDuration ? parseInt(editDuration) : undefined,
     });
     setSaving(false);
     setIsEditing(false);
