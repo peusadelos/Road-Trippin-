@@ -164,7 +164,7 @@ export default function TripMap({
         map.setCenter(bounds.getCenter());
         map.setZoom(14);
       } else {
-        map.fitBounds(bounds, { padding: 60 });
+       map.fitBounds(bounds, { padding: 60 });
       }
     }
   }, [mapsLoaded, days, selectedDayId, onMarkerClick]);
