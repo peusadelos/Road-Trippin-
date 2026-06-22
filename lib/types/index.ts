@@ -32,6 +32,7 @@ export interface Stop {
   latitude: number;
   longitude: number;
   order: number;
+  category?: string;
   notes?: string;
   duration_minutes?: number;
   created_at: string;
