@@ -11,7 +11,7 @@ interface Props {
   onClick: () => void;
 }
 
-const CATEGORY_CONFIG: Record
+const CATEGORY_CONFIG: Record<
   Category,
   { emoji: string; color: string; bg: string }
 > = {
