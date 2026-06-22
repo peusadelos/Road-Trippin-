@@ -1,5 +1,15 @@
 import { Stop } from '../types';
 
+// Helper function to get latitude safely
+function getLat(stop: Stop): number {
+  return (stop.lat ?? stop.latitude) || 0;
+}
+
+// Helper function to get longitude safely
+function getLng(stop: Stop): number {
+  return (stop.lng ?? stop.longitude) || 0;
+}
+
 // Calculate distance between two coordinates (Haversine formula)
 export function getDistance(
   lat1: number,
@@ -24,10 +34,10 @@ function totalDistance(stops: Stop[]): number {
   let total = 0;
   for (let i = 0; i < stops.length - 1; i++) {
     total += getDistance(
-      stops[i].lat,
-      stops[i].lng,
-      stops[i + 1].lat,
-      stops[i + 1].lng
+      getLat(stops[i]),
+      getLng(stops[i]),
+      getLat(stops[i + 1]),
+      getLng(stops[i + 1])
     );
   }
   return total;
@@ -35,10 +45,8 @@ function totalDistance(stops: Stop[]): number {
 
 function nearestNeighbor(stops: Stop[]): Stop[] {
   if (stops.length <= 2) return stops;
-
   const unvisited = [...stops];
   const route: Stop[] = [];
-
   route.push(unvisited.shift()!);
 
   while (unvisited.length > 0) {
@@ -47,7 +55,12 @@ function nearestNeighbor(stops: Stop[]): Stop[] {
     let nearestDistance = Infinity;
 
     unvisited.forEach((stop, index) => {
-      const dist = getDistance(current.lat, current.lng, stop.lat, stop.lng);
+      const dist = getDistance(
+        getLat(current),
+        getLng(current),
+        getLat(stop),
+        getLng(stop)
+      );
       if (dist < nearestDistance) {
         nearestDistance = dist;
         nearestIndex = index;
@@ -69,6 +82,7 @@ function twoOpt(stops: Stop[]): Stop[] {
 
   while (improved) {
     improved = false;
+
     for (let i = 1; i < bestRoute.length - 1; i++) {
       for (let j = i + 1; j < bestRoute.length; j++) {
         const newRoute = [
@@ -76,7 +90,9 @@ function twoOpt(stops: Stop[]): Stop[] {
           ...bestRoute.slice(i, j + 1).reverse(),
           ...bestRoute.slice(j + 1),
         ];
+
         const newDistance = totalDistance(newRoute);
+
         if (newDistance < bestDistance) {
           bestRoute = newRoute;
           bestDistance = newDistance;
