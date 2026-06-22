@@ -1,3 +1,5 @@
+// Route optimization helper
+
 import { Stop } from '../types';
 
 // Calculate distance between two coordinates (Haversine formula)
