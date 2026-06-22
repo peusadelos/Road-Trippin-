@@ -31,6 +31,8 @@ export interface Stop {
   address: string;
   latitude: number;
   longitude: number;
+  lat?: number;
+  lng?: number;
   order: number;
   category?: string;
   start_time?: string;
