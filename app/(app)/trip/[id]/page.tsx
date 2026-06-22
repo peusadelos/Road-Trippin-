@@ -7,8 +7,7 @@ interface Props {
 }
 
 export default async function TripPage({ params }: Props) {
-  const supabase = createServerClient();
-
+  const supabase = await createServerClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
