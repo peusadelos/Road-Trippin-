@@ -18,6 +18,7 @@ const CATEGORY_CONFIG: Record<
   food: { emoji: '🍽️', label: 'Food & Drink' },
   hotel: { emoji: '🏨', label: 'Hotel' },
   attraction: { emoji: '🎯', label: 'Attraction' },
+  activity: { emoji: '🎪', label: 'Activity' },
   shopping: { emoji: '🛍️', label: 'Shopping' },
   nature: { emoji: '🌿', label: 'Nature' },
   transport: { emoji: '🚌', label: 'Transport' },
