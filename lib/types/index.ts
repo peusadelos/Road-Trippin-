@@ -2,6 +2,7 @@ export interface Trip {
   id: string;
   user_id: string;
   title: string;
+  name?: string;
   description?: string;
   start_date: string;
   end_date: string;
