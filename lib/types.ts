@@ -8,6 +8,7 @@ export interface Trip {
   end_date: string;
   is_public: boolean;
   share_enabled: boolean;
+  share_token?: string;
   created_at: string;
   updated_at: string;
 }
