@@ -57,7 +57,7 @@ export default function AddStopModal({ onClose, onAdd, dayLabel }: Props) {
     useRef<google.maps.places.AutocompleteService | null>(null);
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
   const mapDivRef = useRef<HTMLDivElement>(null);
-  const searchTimeout = useRef<NodeJS.Timeout>();
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Load Google Maps
   useEffect(() => {
