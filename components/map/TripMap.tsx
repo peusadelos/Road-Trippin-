@@ -99,7 +99,7 @@ export default function TripMap({
 
       // Draw markers
       stops.forEach((stop, stopIndex) => {
-        const position = { lat: stop.lat, lng: stop.lng };
+        const position = { lat: stop.lat || stop.latitude, lng: stop.lng || stop.longitude };
         bounds.extend(position);
         hasPoints = true;
 
