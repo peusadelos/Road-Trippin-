@@ -11,13 +11,14 @@ interface Props {
   onClick: () => void;
 }
 
-const CATEGORY_CONFIG: Record<
+const CATEGORY_CONFIG: Record
   Category,
   { emoji: string; color: string; bg: string }
 > = {
   food: { emoji: '🍽️', color: 'text-orange-700', bg: 'bg-orange-100' },
   hotel: { emoji: '🏨', color: 'text-blue-700', bg: 'bg-blue-100' },
   attraction: { emoji: '🎯', color: 'text-purple-700', bg: 'bg-purple-100' },
+  activity: { emoji: '🎪', color: 'text-red-700', bg: 'bg-red-100' },
   shopping: { emoji: '🛍️', color: 'text-pink-700', bg: 'bg-pink-100' },
   nature: { emoji: '🌿', color: 'text-green-700', bg: 'bg-green-100' },
   transport: { emoji: '🚌', color: 'text-gray-700', bg: 'bg-gray-100' },
