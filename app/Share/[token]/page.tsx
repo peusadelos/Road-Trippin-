@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default async function SharePage({ params }: Props) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   // Find trip by share token
   const { data: trip } = await supabase
