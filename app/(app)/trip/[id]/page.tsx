@@ -13,7 +13,13 @@ export default async function TripPage({ params }: Props) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session) redirect('/login');
+  if (!session) {
+    console.log('DEBUG: No session, redirecting to login');
+    redirect('/login');
+  }
+
+  console.log('DEBUG: Session user ID:', session.user.id);
+  console.log('DEBUG: Trip ID from URL:', params.id);
 
   // Fetch trip
   const { data: trip, error: tripError } = await supabase
@@ -23,12 +29,17 @@ export default async function TripPage({ params }: Props) {
     .eq('user_id', session.user.id)
     .single();
 
-  console.log('Trip fetch result:', { trip, tripError }); // ← ADD THIS TO SEE THE ERROR
+  console.log('DEBUG: Trip query result:', { trip, tripError });
 
-  if (!trip) redirect('/dashboard');
+  if (!trip) {
+    console.log('DEBUG: No trip found, redirecting to dashboard');
+    redirect('/dashboard');
+  }
+
+  console.log('DEBUG: Trip found, fetching days...');
 
   // Fetch days with stops
-  const { data: days } = await supabase
+  const { data: days, error: daysError } = await supabase
     .from('trip_days')
     .select(`
       *,
@@ -37,6 +48,8 @@ export default async function TripPage({ params }: Props) {
     .eq('trip_id', params.id)
     .order('day_number', { ascending: true });
 
+  console.log('DEBUG: Days query result:', { daysCount: days?.length, daysError });
+
   // Sort stops by sort_order inside each day
   const daysWithSortedStops = (days || []).map((day) => ({
     ...day,
@@ -44,6 +57,8 @@ export default async function TripPage({ params }: Props) {
       (a: any, b: any) => a.sort_order - b.sort_order
     ),
   }));
+
+  console.log('DEBUG: Rendering TripClient');
 
   return <TripClient trip={trip} initialDays={daysWithSortedStops} />;
 }
