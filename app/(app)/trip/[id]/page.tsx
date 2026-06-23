@@ -21,18 +21,20 @@ export default async function TripPage({ params }: Props) {
   console.log('DEBUG: Session user ID:', session.user.id);
   console.log('DEBUG: Trip ID from URL:', params.id);
 
-  // Fetch trip
-  const { data: trip, error: tripError } = await supabase
+  // Fetch trip - without .single() to avoid strict error handling
+  const { data: trips, error: tripError } = await supabase
     .from('trips')
     .select('*')
     .eq('id', params.id)
-    .eq('user_id', session.user.id)
-    .single();
+    .eq('user_id', session.user.id);
 
-  console.log('DEBUG: Trip query result:', { trip, tripError });
+  console.log('DEBUG: Trip query result:', { trips, tripError });
 
-  if (!trip) {
-    console.log('DEBUG: No trip found, redirecting to dashboard');
+  // Get the first (and should be only) trip
+  const trip = trips && trips.length > 0 ? trips[0] : null;
+
+  if (!trip || tripError) {
+    console.log('DEBUG: No trip found or query error, redirecting to dashboard', { trip, tripError });
     redirect('/dashboard');
   }
 
@@ -49,6 +51,10 @@ export default async function TripPage({ params }: Props) {
     .order('day_number', { ascending: true });
 
   console.log('DEBUG: Days query result:', { daysCount: days?.length, daysError });
+
+  if (daysError) {
+    console.error('DEBUG: Error fetching days:', daysError);
+  }
 
   // Sort stops by order inside each day
   const daysWithSortedStops = (days || []).map((day: any) => ({
