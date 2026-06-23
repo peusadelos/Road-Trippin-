@@ -56,14 +56,14 @@ export default function TripClient({ trip, initialDays }: Props) {
           day_id: selectedDay.id,
           name: stopData.name,
           address: stopData.address,
-          latitude: stopData.lat,
-          longitude: stopData.lng,
+          lat: stopData.lat,
+          lng: stopData.lng,
           place_id: stopData.place_id,
           category: stopData.category,
           notes: stopData.notes,
           start_time: stopData.start_time || null,
           duration_minutes: stopData.duration_minutes,
-          order: newOrder,
+          sort_order: newOrder,
         })
         .select()
         .single();
@@ -124,7 +124,7 @@ export default function TripClient({ trip, initialDays }: Props) {
           ...day,
           stops: day.stops
             .filter((s) => s.id !== stopId)
-            .map((s, i) => ({ ...s, order: i })),
+            .map((s, i) => ({ ...s, sort_order: i })),
         }))
       );
 
@@ -138,7 +138,7 @@ export default function TripClient({ trip, initialDays }: Props) {
     async (dayId: string, reorderedStops: Stop[]) => {
       const updatedStops = reorderedStops.map((s, i) => ({
         ...s,
-        order: i,
+        sort_order: i,
       }));
 
       setDays((prev) =>
@@ -152,7 +152,7 @@ export default function TripClient({ trip, initialDays }: Props) {
         updatedStops.map((stop) =>
           supabase
             .from('stops')
-            .update({ order: stop.order })
+            .update({ sort_order: stop.sort_order })
             .eq('id', stop.id)
         )
       );
