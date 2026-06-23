@@ -29,6 +29,16 @@ interface Props {
   dayLabel: string;
 }
 
+interface AutocompleteSuggestion {
+  placePrediction?: {
+    text?: { text?: string };
+    mainText?: { text?: string };
+    secondaryText?: { text?: string };
+    placeId?: string;
+    toPlace?: () => any;
+  };
+}
+
 const CATEGORIES: { value: Category; label: string; emoji: string }[] = [
   { value: 'attraction', label: 'Attraction', emoji: '🎯' },
   { value: 'food', label: 'Food & Drink', emoji: '🍽️' },
@@ -41,9 +51,7 @@ const CATEGORIES: { value: Category; label: string; emoji: string }[] = [
 
 export default function AddStopModal({ onClose, onAdd, dayLabel }: Props) {
   const [query, setQuery] = useState('');
-  const [predictions, setPredictions] = useState<
-    google.maps.places.AutocompletePrediction[]
-  >([]);
+  const [predictions, setPredictions] = useState<AutocompleteSuggestion[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [category, setCategory] = useState<Category>('attraction');
   const [notes, setNotes] = useState('');
@@ -53,88 +61,91 @@ export default function AddStopModal({ onClose, onAdd, dayLabel }: Props) {
   const [searching, setSearching] = useState(false);
   const [mapsReady, setMapsReady] = useState(false);
 
-  const autocompleteService =
-    useRef<google.maps.places.AutocompleteService | null>(null);
-  const placesService = useRef<google.maps.places.PlacesService | null>(null);
-  const mapDivRef = useRef<HTMLDivElement>(null);
+  const AutocompleteSuggestionRef = useRef<any>(null);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Load Google Maps
   useEffect(() => {
     loadGoogleMaps().then(() => {
-      autocompleteService.current =
-        new google.maps.places.AutocompleteService();
-      if (mapDivRef.current) {
-        const map = new google.maps.Map(mapDivRef.current);
-        placesService.current = new google.maps.places.PlacesService(map);
-      }
-      setMapsReady(true);
+      (async () => {
+        const { AutocompleteSuggestion, AutocompleteSessionToken } =
+          await (window as any).google.maps.importLibrary('places');
+        AutocompleteSuggestionRef.current = AutocompleteSuggestion;
+        setMapsReady(true);
+      })();
     });
   }, []);
 
   // Search with debounce
   useEffect(() => {
-    if (!mapsReady || !autocompleteService.current) return;
+    if (!mapsReady || !AutocompleteSuggestionRef.current) return;
     if (!query.trim()) {
       setPredictions([]);
       return;
     }
 
-   if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      setSearching(true);
-      autocompleteService.current!.getPlacePredictions(
-        { input: query },
-        (results, status) => {
-          setSearching(false);
-          if (
-            status === google.maps.places.PlacesServiceStatus.OK &&
-            results
-          ) {
-            setPredictions(results);
-          } else {
-            setPredictions([]);
-          }
-        }
-      );
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        setSearching(true);
+        const request = {
+          input: query,
+          language: 'en-US',
+        };
+
+        const { suggestions } =
+          await AutocompleteSuggestionRef.current.fetchAutocompleteSuggestions(
+            request
+          );
+
+        setPredictions(suggestions || []);
+        setSearching(false);
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        setPredictions([]);
+        setSearching(false);
+      }
     }, 400);
 
     return () => {
-  if (searchTimeout.current) clearTimeout(searchTimeout.current);
-};
+      if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    };
   }, [query, mapsReady]);
 
-  const handleSelectPrediction = (
-    prediction: google.maps.places.AutocompletePrediction
+  const handleSelectPrediction = async (
+    suggestion: AutocompleteSuggestion
   ) => {
-    if (!placesService.current) return;
+    if (!suggestion.placePrediction?.toPlace) return;
     setLoading(true);
     setPredictions([]);
 
-    placesService.current.getDetails(
-      {
-        placeId: prediction.place_id,
-        fields: ['name', 'formatted_address', 'geometry', 'place_id'],
-      },
-      (place, status) => {
-        setLoading(false);
-        if (
-          status === google.maps.places.PlacesServiceStatus.OK &&
-          place?.geometry?.location
-        ) {
-          setSelectedPlace({
-            name: place.name || prediction.structured_formatting.main_text,
-            address: place.formatted_address || '',
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-            place_id: place.place_id || prediction.place_id,
-          });
-          setQuery(
-            place.name || prediction.structured_formatting.main_text
-          );
-        }
-      }
-    );
+    try {
+      const place = suggestion.placePrediction.toPlace();
+      await place.fetchFields({
+        fields: ['displayName', 'formattedAddress', 'location'],
+      });
+
+      const mainText =
+        suggestion.placePrediction.mainText?.text ||
+        suggestion.placePrediction.text?.text ||
+        '';
+      const secondaryText =
+        suggestion.placePrediction.secondaryText?.text || '';
+
+      setSelectedPlace({
+        name: place.displayName || mainText,
+        address: place.formattedAddress || secondaryText,
+        lat: place.location?.lat() || 0,
+        lng: place.location?.lng() || 0,
+        place_id: suggestion.placePrediction.placeId || '',
+      });
+
+      setQuery(place.displayName || mainText);
+    } catch (error) {
+      console.error('Error getting place details:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -156,9 +167,6 @@ export default function AddStopModal({ onClose, onAdd, dayLabel }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      {/* Hidden map div for PlacesService */}
-      <div ref={mapDivRef} className="hidden" />
-
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center p-5 border-b flex-shrink-0">
@@ -199,24 +207,27 @@ export default function AddStopModal({ onClose, onAdd, dayLabel }: Props) {
               {/* Predictions Dropdown */}
               {predictions.length > 0 && (
                 <div className="mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                  {predictions.map((p) => (
-                    <button
-                      key={p.place_id}
-                      type="button"
-                      onClick={() => handleSelectPrediction(p)}
-                      className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 text-left transition-colors"
-                    >
-                      <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {p.structured_formatting.main_text}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {p.structured_formatting.secondary_text}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                  {predictions.map((p, idx) => {
+                    const mainText = p.placePrediction?.mainText?.text || '';
+                    const secondaryText =
+                      p.placePrediction?.secondaryText?.text || '';
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSelectPrediction(p)}
+                        className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 text-left transition-colors"
+                      >
+                        <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {mainText}
+                          </p>
+                          <p className="text-xs text-gray-400">{secondaryText}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
