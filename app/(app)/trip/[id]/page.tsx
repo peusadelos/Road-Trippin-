@@ -9,36 +9,51 @@ interface Props {
 export default async function TripPage({ params }: Props) {
   const supabase = await createServerClient();
   
+  console.log('=== TRIP PAGE DEBUG START ===');
+  console.log('Trip ID from URL:', params.id);
+  console.log('URL params:', JSON.stringify(params));
+
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
+  console.log('Session exists:', !!session);
+  console.log('Session user ID:', session?.user?.id);
+
   if (!session) {
-    console.log('DEBUG: No session, redirecting to login');
+    console.log('❌ NO SESSION - REDIRECTING TO LOGIN');
     redirect('/login');
   }
 
-  console.log('DEBUG: Session user ID:', session.user.id);
-  console.log('DEBUG: Trip ID from URL:', params.id);
+  console.log('✅ Session valid, querying trips...');
 
-  // Fetch trip - without .single() to avoid strict error handling
+  // Fetch trip
   const { data: trips, error: tripError } = await supabase
     .from('trips')
     .select('*')
     .eq('id', params.id)
     .eq('user_id', session.user.id);
 
-  console.log('DEBUG: Trip query result:', { trips, tripError });
+  console.log('Trip query complete:');
+  console.log('  - trips:', trips);
+  console.log('  - error:', tripError);
+  console.log('  - trips length:', trips?.length);
 
-  // Get the first (and should be only) trip
   const trip = trips && trips.length > 0 ? trips[0] : null;
 
-  if (!trip || tripError) {
-    console.log('DEBUG: No trip found or query error, redirecting to dashboard', { trip, tripError });
+  console.log('Extracted trip:', trip ? `✅ Found: ${trip.name}` : '❌ No trip found');
+
+  if (!trip) {
+    console.log('❌ TRIP NOT FOUND - REDIRECTING TO DASHBOARD');
+    console.log('Details:', { trip, tripError });
     redirect('/dashboard');
   }
 
-  console.log('DEBUG: Trip found, fetching days...');
+  if (tripError) {
+    console.log('⚠️ ERROR (but continuing):', tripError);
+  }
+
+  console.log('✅ Trip found, fetching days...');
 
   // Fetch days with stops
   const { data: days, error: daysError } = await supabase
@@ -50,10 +65,12 @@ export default async function TripPage({ params }: Props) {
     .eq('trip_id', params.id)
     .order('day_number', { ascending: true });
 
-  console.log('DEBUG: Days query result:', { daysCount: days?.length, daysError });
+  console.log('Days query complete:');
+  console.log('  - days count:', days?.length);
+  console.log('  - error:', daysError);
 
   if (daysError) {
-    console.error('DEBUG: Error fetching days:', daysError);
+    console.error('⚠️ Days query error:', daysError);
   }
 
   // Sort stops by order inside each day
@@ -64,7 +81,10 @@ export default async function TripPage({ params }: Props) {
     ),
   }));
 
-  console.log('DEBUG: Rendering TripClient');
+  console.log('=== TRIP PAGE DEBUG END - RENDERING ===');
+  console.log('About to render TripClient with:');
+  console.log('  - trip:', trip.name);
+  console.log('  - days:', daysWithSortedStops.length);
 
   return <TripClient trip={trip} initialDays={daysWithSortedStops} />;
 }
