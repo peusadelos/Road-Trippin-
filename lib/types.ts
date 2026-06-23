@@ -1,7 +1,7 @@
 export interface Trip {
   id: string;
   user_id: string;
-  name: string;           // ← NOT "title"
+  name: string;
   description?: string;
   start_date: string;
   end_date: string;
@@ -12,6 +12,7 @@ export interface Trip {
   created_at: string;
   updated_at: string;
 }
+
 export interface TripDay {
   id: string;
   trip_id: string;
@@ -22,6 +23,7 @@ export interface TripDay {
   created_at: string;
   updated_at: string;
 }
+
 export interface Stop {
   id: string;
   day_id: string;
@@ -30,9 +32,10 @@ export interface Stop {
   address: string;
   latitude: number;
   longitude: number;
-  lat?: number;
-  lng?: number;
+  lat?: number;      // Keep for backwards compatibility
+  lng?: number;      // Keep for backwards compatibility
   order: number;
+  sort_order?: number;  // Keep for backwards compatibility
   category?: string;
   start_time?: string;
   notes?: string;
@@ -40,9 +43,11 @@ export interface Stop {
   created_at: string;
   updated_at: string;
 }
+
 export interface TripDayWithStops extends TripDay {
   stops: Stop[];
 }
+
 export interface Profile {
   id: string;
   full_name?: string;
@@ -50,6 +55,7 @@ export interface Profile {
   created_at: string;
   updated_at: string;
 }
+
 export interface ShareToken {
   id: string;
   trip_id: string;
@@ -57,4 +63,5 @@ export interface ShareToken {
   created_at: string;
   expires_at?: string;
 }
+
 export type Category = 'attraction' | 'food' | 'hotel' | 'nature' | 'activity' | 'shopping' | 'transport' | 'other';
