@@ -3,10 +3,11 @@ import { redirect } from 'next/navigation';
 import TripClient from './TripClient';
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function TripPage({ params }: Props) {
+  const { id } = await params;
   const supabase = await createServerClient();
   
   const {
@@ -19,7 +20,7 @@ export default async function TripPage({ params }: Props) {
   }
 
   console.log('=== TRIP PAGE DEBUG ===');
-  console.log('Trip ID:', params.id);
+  console.log('Trip ID:', id);
   console.log('User ID:', session.user.id);
 
   // DIAGNOSTIC TEST: Query WITHOUT user_id filter to see if data exists at all
@@ -27,7 +28,7 @@ export default async function TripPage({ params }: Props) {
   const { data: allTrips, error: allError } = await supabase
     .from('trips')
     .select('*')
-    .eq('id', params.id);
+    .eq('id', id);
 
   console.log('DEBUG: All trips (no filter):', { count: allTrips?.length, allError });
   if (allTrips && allTrips.length > 0) {
@@ -39,7 +40,7 @@ export default async function TripPage({ params }: Props) {
   const { data: userTrips, error: userError } = await supabase
     .from('trips')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', session.user.id);
 
   console.log('DEBUG: User trips (with filter):', { count: userTrips?.length, userError });
@@ -69,7 +70,7 @@ export default async function TripPage({ params }: Props) {
       *,
       stops (*)
     `)
-    .eq('trip_id', params.id)
+    .eq('trip_id', id)
     .order('day_number', { ascending: true });
 
   if (daysError) {
