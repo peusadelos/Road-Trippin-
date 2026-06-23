@@ -47,7 +47,7 @@ export default function TripClient({ trip, initialDays }: Props) {
       if (!selectedDay) return;
 
       const currentStops = selectedDay.stops || [];
-      const newSortOrder = currentStops.length;
+      const newOrder = currentStops.length;
 
       const { data: newStop, error } = await supabase
         .from('stops')
@@ -56,14 +56,14 @@ export default function TripClient({ trip, initialDays }: Props) {
           day_id: selectedDay.id,
           name: stopData.name,
           address: stopData.address,
-          lat: stopData.lat,
-          lng: stopData.lng,
+          latitude: stopData.lat,
+          longitude: stopData.lng,
           place_id: stopData.place_id,
           category: stopData.category,
           notes: stopData.notes,
           start_time: stopData.start_time || null,
           duration_minutes: stopData.duration_minutes,
-          sort_order: newSortOrder,
+          order: newOrder,
         })
         .select()
         .single();
@@ -124,7 +124,7 @@ export default function TripClient({ trip, initialDays }: Props) {
           ...day,
           stops: day.stops
             .filter((s) => s.id !== stopId)
-            .map((s, i) => ({ ...s, sort_order: i })),
+            .map((s, i) => ({ ...s, order: i })),
         }))
       );
 
@@ -138,7 +138,7 @@ export default function TripClient({ trip, initialDays }: Props) {
     async (dayId: string, reorderedStops: Stop[]) => {
       const updatedStops = reorderedStops.map((s, i) => ({
         ...s,
-        sort_order: i,
+        order: i,
       }));
 
       setDays((prev) =>
@@ -147,12 +147,12 @@ export default function TripClient({ trip, initialDays }: Props) {
         )
       );
 
-      // Update sort_order in database
+      // Update order in database
       await Promise.all(
         updatedStops.map((stop) =>
           supabase
             .from('stops')
-            .update({ sort_order: stop.sort_order })
+            .update({ order: stop.order })
             .eq('id', stop.id)
         )
       );
