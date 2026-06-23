@@ -1,13 +1,11 @@
 export interface Trip {
   id: string;
   user_id: string;
-  title: string;
-  name?: string;
+  name: string;           // ← NOT "title"
   description?: string;
   start_date: string;
   end_date: string;
   cover_color: string;
-  is_public: boolean;
   is_active: boolean;
   share_enabled: boolean;
   share_token?: string;
