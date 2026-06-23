@@ -8,6 +8,7 @@ interface Props {
 
 export default async function TripPage({ params }: Props) {
   const supabase = await createServerClient();
+  
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -15,12 +16,14 @@ export default async function TripPage({ params }: Props) {
   if (!session) redirect('/login');
 
   // Fetch trip
-  const { data: trip } = await supabase
+  const { data: trip, error: tripError } = await supabase
     .from('trips')
     .select('*')
     .eq('id', params.id)
     .eq('user_id', session.user.id)
     .single();
+
+  console.log('Trip fetch result:', { trip, tripError }); // ← ADD THIS TO SEE THE ERROR
 
   if (!trip) redirect('/dashboard');
 
