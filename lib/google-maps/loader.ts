@@ -16,7 +16,14 @@ export const getGoogleMapsLoader = () => {
 
 export const loadGoogleMaps = async () => {
   if (isLoaded) return;
-  const loader = getGoogleMapsLoader();
-  await google.maps.importLibrary('maps');
-  isLoaded = true;
+  
+  try {
+    const loader = getGoogleMapsLoader();
+    // Simply importing the library is enough to load it
+    await loader.importLibrary('maps');
+    isLoaded = true;
+  } catch (error) {
+    console.error('Failed to load Google Maps:', error);
+    // Don't throw - let the app continue without maps
+  }
 };
