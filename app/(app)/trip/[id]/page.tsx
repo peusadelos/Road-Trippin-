@@ -9,51 +9,58 @@ interface Props {
 export default async function TripPage({ params }: Props) {
   const supabase = await createServerClient();
   
-  console.log('=== TRIP PAGE DEBUG START ===');
-  console.log('Trip ID from URL:', params.id);
-  console.log('URL params:', JSON.stringify(params));
-
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  console.log('Session exists:', !!session);
-  console.log('Session user ID:', session?.user?.id);
-
   if (!session) {
-    console.log('❌ NO SESSION - REDIRECTING TO LOGIN');
+    console.log('DEBUG: No session, redirecting to login');
     redirect('/login');
   }
 
-  console.log('✅ Session valid, querying trips...');
+  console.log('=== TRIP PAGE DEBUG ===');
+  console.log('Trip ID:', params.id);
+  console.log('User ID:', session.user.id);
 
-  // Fetch trip
-  const { data: trips, error: tripError } = await supabase
+  // DIAGNOSTIC TEST: Query WITHOUT user_id filter to see if data exists at all
+  console.log('DEBUG: Testing query without user_id filter...');
+  const { data: allTrips, error: allError } = await supabase
+    .from('trips')
+    .select('*')
+    .eq('id', params.id);
+
+  console.log('DEBUG: All trips (no filter):', { count: allTrips?.length, allError });
+  if (allTrips && allTrips.length > 0) {
+    console.log('DEBUG: Trip found! Details:', allTrips[0]);
+  }
+
+  // Now query WITH user_id filter
+  console.log('DEBUG: Testing query WITH user_id filter...');
+  const { data: userTrips, error: userError } = await supabase
     .from('trips')
     .select('*')
     .eq('id', params.id)
     .eq('user_id', session.user.id);
 
-  console.log('Trip query complete:');
-  console.log('  - trips:', trips);
-  console.log('  - error:', tripError);
-  console.log('  - trips length:', trips?.length);
+  console.log('DEBUG: User trips (with filter):', { count: userTrips?.length, userError });
 
-  const trip = trips && trips.length > 0 ? trips[0] : null;
-
-  console.log('Extracted trip:', trip ? `✅ Found: ${trip.name}` : '❌ No trip found');
+  // Use the filtered results
+  const trip = userTrips && userTrips.length > 0 ? userTrips[0] : null;
 
   if (!trip) {
-    console.log('❌ TRIP NOT FOUND - REDIRECTING TO DASHBOARD');
-    console.log('Details:', { trip, tripError });
+    console.log('❌ NO TRIP FOUND - ANALYSIS:');
+    if (allTrips && allTrips.length > 0) {
+      console.log('  ⚠️ Trip EXISTS in database but user_id filter failed!');
+      console.log('  Possible causes: RLS policy, user_id mismatch');
+      console.log('  Trip in DB:', allTrips[0].id, 'user_id:', allTrips[0].user_id);
+      console.log('  Session user_id:', session.user.id);
+    } else {
+      console.log('  ❌ Trip does not exist in database at all');
+    }
     redirect('/dashboard');
   }
 
-  if (tripError) {
-    console.log('⚠️ ERROR (but continuing):', tripError);
-  }
-
-  console.log('✅ Trip found, fetching days...');
+  console.log('✅ Trip found:', trip.name);
 
   // Fetch days with stops
   const { data: days, error: daysError } = await supabase
@@ -65,12 +72,8 @@ export default async function TripPage({ params }: Props) {
     .eq('trip_id', params.id)
     .order('day_number', { ascending: true });
 
-  console.log('Days query complete:');
-  console.log('  - days count:', days?.length);
-  console.log('  - error:', daysError);
-
   if (daysError) {
-    console.error('⚠️ Days query error:', daysError);
+    console.error('DEBUG: Error fetching days:', daysError);
   }
 
   // Sort stops by order inside each day
@@ -81,10 +84,7 @@ export default async function TripPage({ params }: Props) {
     ),
   }));
 
-  console.log('=== TRIP PAGE DEBUG END - RENDERING ===');
-  console.log('About to render TripClient with:');
-  console.log('  - trip:', trip.name);
-  console.log('  - days:', daysWithSortedStops.length);
+  console.log('=== RENDERING TRIP PAGE ===');
 
   return <TripClient trip={trip} initialDays={daysWithSortedStops} />;
 }
