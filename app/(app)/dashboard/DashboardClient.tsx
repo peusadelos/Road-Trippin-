@@ -1,36 +1,107 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { Plus, MapPin, Calendar, Share2, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { Trip, Profile } from '@/lib/types';
+import { formatFullDate, generateDays, getTripDuration } from '@/lib/utils/date-helpers';
+import { Plus, MapPin, Calendar, LogOut, Archive } from 'lucide-react';
+import CreateTripModal from '@/components/dashboard/CreateTripModal';
 
-interface Trip {
-  id: string;
-  title: string;
-  description?: string;
-  start_date: string;
-  end_date: string;
-  created_at: string;
-}
-
-interface Profile {
-  id: string;
-  full_name?: string;
-  avatar_url?: string;
-}
-
-interface DashboardClientProps {
+interface Props {
   trips: Trip[];
-  profile: Profile | null;
+  profile: Profile;
 }
 
-export default function DashboardClient({ trips, profile }: DashboardClientProps) {
-  const [selectedTrip, setSelectedTrip] = useState<string | null>(null);
+export default function DashboardClient({ trips, profile }: Props) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const activeTrip = trips.find((t) => t.is_active);
+  const archivedTrips = trips.filter((t) => !t.is_active);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+    router.refresh();
+  };
+
+  const handleCreateTrip = async (data: {
+    name: string;
+    startDate: string;
+    endDate: string;
+    description: string;
+    coverColor: string;
+  }) => {
+    setLoading(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+
+    // Archive current active trip if exists
+    if (activeTrip) {
+      await supabase
+        .from('trips')
+        .update({ is_active: false })
+        .eq('id', activeTrip.id);
+    }
+
+    // Create new trip
+    const { data: newTrip, error } = await supabase
+      .from('trips')
+      .insert({
+        user_id: session.user.id,
+        name: data.name,
+        start_date: data.startDate,
+        end_date: data.endDate,
+        description: data.description,
+        cover_color: data.coverColor,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (error || !newTrip) {
+      console.error('Error creating trip:', error);
+      setLoading(false);
+      return;
+    }
+
+    // Auto-generate days
+    const days = generateDays(data.startDate, data.endDate);
+    const { error: daysError } = await supabase
+      .from('trip_days')
+      .insert(
+        days.map((day) => ({
+          trip_id: newTrip.id,
+          day_number: day.day_number,
+          date: day.date,
+        }))
+      );
+
+    if (daysError) {
+      console.error('Error creating days:', daysError);
+    }
+
+    setLoading(false);
+    setShowCreateModal(false);
+    router.push(`/trip/${newTrip.id}`);
+    router.refresh();
+  };
+
+  const handleOpenTrip = (tripId: string) => {
+    router.push(`/trip/${tripId}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
-      <nav className="bg-white shadow-sm">
+      <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
@@ -40,88 +111,128 @@ export default function DashboardClient({ trips, profile }: DashboardClientProps
               </span>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-gray-700">
-                {profile?.full_name || 'User'}
+              <span className="text-sm text-gray-600">
+                Hi, {profile?.full_name || 'Traveler'}!
               </span>
-              <Link
-                href="/api/auth/logout"
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium"
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 text-gray-500 hover:text-gray-700 text-sm"
               >
-                Log out
-              </Link>
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Your Road Trips
-            </h1>
-            <p className="text-gray-600 mt-2">
-              {trips.length} trip{trips.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <Link
-            href="/dashboard/new"
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             New Trip
-          </Link>
+          </button>
         </div>
 
-        {/* Trips Grid */}
-        {trips.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trips.map((trip) => (
-              <Link
-                key={trip.id}
-                href={`/dashboard/trip/${trip.id}`}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
-              >
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {trip.title}
+        {/* Active Trip */}
+        {activeTrip ? (
+          <div className="mb-10">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+              Current Trip
+            </h2>
+            <div
+              onClick={() => handleOpenTrip(activeTrip.id)}
+              className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
+              style={{ borderLeft: `4px solid ${activeTrip.cover_color}` }}
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {activeTrip.name}
                   </h3>
-                  {trip.description && (
-                    <p className="text-gray-600 text-sm mb-4">
-                      {trip.description}
-                    </p>
+                  {activeTrip.description && (
+                    <p className="text-gray-500 mt-1">{activeTrip.description}</p>
                   )}
-                  <div className="space-y-2 text-sm text-gray-500">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-4 mt-3">
+                    <span className="flex items-center gap-1 text-sm text-gray-600">
                       <Calendar className="w-4 h-4" />
-                      {new Date(trip.start_date).toLocaleDateString()} -{' '}
-                      {new Date(trip.end_date).toLocaleDateString()}
-                    </div>
+                      {formatFullDate(activeTrip.start_date)} →{' '}
+                      {formatFullDate(activeTrip.end_date)}
+                    </span>
+                    <span className="flex items-center gap-1 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4" />
+                      {getTripDuration(activeTrip.start_date, activeTrip.end_date)} days
+                    </span>
                   </div>
                 </div>
-              </Link>
-            ))}
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                  Active
+                </span>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="text-center py-12">
-            <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
-              No trips yet
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Create your first road trip to get started!
+          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300 mb-10">
+            <span className="text-5xl mb-4 block">🗺️</span>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">
+              No active trip
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Create your first trip to get started!
             </p>
-            <Link
-              href="/dashboard/new"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
             >
-              <Plus className="w-5 h-5" />
-              Create First Trip
-            </Link>
+              Create a trip
+            </button>
           </div>
         )}
-      </main>
+
+        {/* Archived Trips */}
+        {archivedTrips.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Archive className="w-4 h-4" />
+              Archived Trips
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {archivedTrips.map((trip) => (
+                <div
+                  key={trip.id}
+                  onClick={() => handleOpenTrip(trip.id)}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:shadow-md transition-shadow opacity-75 hover:opacity-100"
+                  style={{ borderLeft: `4px solid ${trip.cover_color}` }}
+                >
+                  <h3 className="font-bold text-gray-800">{trip.name}</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {formatFullDate(trip.start_date)} →{' '}
+                    {formatFullDate(trip.end_date)}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {getTripDuration(trip.start_date, trip.end_date)} days
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Create Trip Modal */}
+      {showCreateModal && (
+        <CreateTripModal
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreateTrip}
+          loading={loading}
+          hasActiveTrip={!!activeTrip}
+        />
+      )}
     </div>
   );
 }
