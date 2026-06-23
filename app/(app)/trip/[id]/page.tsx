@@ -50,11 +50,11 @@ export default async function TripPage({ params }: Props) {
 
   console.log('DEBUG: Days query result:', { daysCount: days?.length, daysError });
 
-  // Sort stops by sort_order inside each day
-  const daysWithSortedStops = (days || []).map((day) => ({
+  // Sort stops by order inside each day
+  const daysWithSortedStops = (days || []).map((day: any) => ({
     ...day,
     stops: (day.stops || []).sort(
-      (a: any, b: any) => a.sort_order - b.sort_order
+      (a: any, b: any) => a.order - b.order
     ),
   }));
 
