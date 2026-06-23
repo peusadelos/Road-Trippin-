@@ -1,10 +1,8 @@
 'use client';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-
 export default function SignupPage() {
   const router = useRouter();
   const [fullName, setFullName] = useState('');
@@ -17,7 +15,6 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-
     const supabase = createClient();
 
     const { data, error } = await supabase.auth.signUp({
@@ -31,12 +28,27 @@ export default function SignupPage() {
     console.log('Signup response:', { data, error });
 
     if (error) {
-  setError(error.message || error.name || JSON.stringify(error) || 'Unknown error');
-  setLoading(false);
-  return;
-}
+      setError(error.message || error.name || JSON.stringify(error) || 'Unknown error');
+      setLoading(false);
+      return;
+    }
 
     if (data?.user) {
+      // Create profile after signup
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          full_name: fullName,
+        });
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        setError('Profile creation failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
       router.push('/dashboard');
       router.refresh();
     } else {
@@ -55,7 +67,6 @@ export default function SignupPage() {
           </h1>
           <p className="text-gray-500 mt-1">Create your free account</p>
         </div>
-
         <form onSubmit={handleSignup} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -70,7 +81,6 @@ export default function SignupPage() {
               placeholder="John Doe"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email
@@ -84,7 +94,6 @@ export default function SignupPage() {
               placeholder="you@example.com"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Password
@@ -99,13 +108,11 @@ export default function SignupPage() {
               placeholder="Min. 6 characters"
             />
           </div>
-
           {error && (
             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
-
           <button
             type="submit"
             disabled={loading}
@@ -114,7 +121,6 @@ export default function SignupPage() {
             {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
-
         <p className="text-center text-gray-600 mt-6 text-sm">
           Already have an account?{' '}
           <Link
