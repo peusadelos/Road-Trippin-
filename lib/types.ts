@@ -6,6 +6,7 @@ export interface Trip {
   description?: string;
   start_date: string;
   end_date: string;
+  cover_color: string;
   is_public: boolean;
   is_active: boolean;
   share_enabled: boolean;
