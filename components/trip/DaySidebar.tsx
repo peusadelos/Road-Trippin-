@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { TripDayWithStops, Stop } from '@/lib/types';
 import { formatDayLabel } from '@/lib/utils/date-helpers';
-import { Plus, Zap, ChevronRight } from 'lucide-react';
+import { Plus, Zap, ChevronRight, Share2 } from 'lucide-react';
 import StopList from './StopList';
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
   onSelectDay: (id: string) => void;
   onAddStop: () => void;
   onOptimizeRoute: () => void;
+  onShareToMaps: () => void;
   onStopClick: (stop: Stop) => void;
   onReorderStops: (dayId: string, stops: Stop[]) => void;
 }
@@ -22,6 +23,7 @@ export default function DaySidebar({
   onSelectDay,
   onAddStop,
   onOptimizeRoute,
+  onShareToMaps,
   onStopClick,
   onReorderStops,
 }: Props) {
@@ -65,7 +67,7 @@ export default function DaySidebar({
       {/* Selected Day Header */}
       {selectedDay && (
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="font-bold text-gray-900">
                 {formatDayLabel(selectedDay.date, selectedDay.day_number)}
@@ -74,27 +76,38 @@ export default function DaySidebar({
                 <p className="text-sm text-gray-500">{selectedDay.title}</p>
               )}
             </div>
-            <div className="flex items-center gap-1">
-              {/* Optimize Button */}
-              {selectedDay.stops?.length > 1 && (
-                <button
-                  onClick={onOptimizeRoute}
-                  title="Optimize route"
-                  className="flex items-center gap-1 px-2 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200 transition-colors"
-                >
-                  <Zap className="w-3 h-3" />
-                  Optimize
-                </button>
-              )}
-              {/* Add Stop Button */}
+          </div>
+          <div className="flex gap-2">
+            {/* Optimize Button */}
+            {selectedDay.stops?.length > 1 && (
               <button
-                onClick={onAddStop}
-                className="flex items-center gap-1 px-2 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
+                onClick={onOptimizeRoute}
+                title="Optimize route"
+                className="flex items-center gap-1 px-2 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200 transition-colors flex-1"
               >
-                <Plus className="w-3 h-3" />
-                Add Stop
+                <Zap className="w-3 h-3" />
+                Optimize
               </button>
-            </div>
+            )}
+            {/* Share to Maps Button */}
+            {selectedDay.stops?.length > 0 && (
+              <button
+                onClick={onShareToMaps}
+                title="Share to Google Maps"
+                className="flex items-center gap-1 px-2 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-medium hover:bg-green-200 transition-colors flex-1"
+              >
+                <Share2 className="w-3 h-3" />
+                Share Maps
+              </button>
+            )}
+            {/* Add Stop Button */}
+            <button
+              onClick={onAddStop}
+              className="flex items-center gap-1 px-2 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex-1"
+            >
+              <Plus className="w-3 h-3" />
+              Add Stop
+            </button>
           </div>
         </div>
       )}
