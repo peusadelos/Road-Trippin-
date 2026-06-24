@@ -83,6 +83,55 @@ export default function TripClient({ trip, initialDays }: Props) {
     [selectedDay, trip.id, supabase]
   );
 
+  // Add nearby stop
+  const handleAddNearbyStop = useCallback(
+    async (stopData: {
+      name: string;
+      address: string;
+      lat: number;
+      lng: number;
+      place_id: string;
+      category: string;
+    }) => {
+      if (!selectedDay) return;
+
+      const currentStops = selectedDay.stops || [];
+      const newOrder = currentStops.length;
+
+      const { data: newStop, error } = await supabase
+        .from('stops')
+        .insert({
+          trip_id: trip.id,
+          day_id: selectedDay.id,
+          name: stopData.name,
+          address: stopData.address,
+          lat: stopData.lat,
+          lng: stopData.lng,
+          place_id: stopData.place_id,
+          category: stopData.category,
+          notes: null,
+          start_time: null,
+          duration_minutes: null,
+          sort_order: newOrder,
+        })
+        .select()
+        .single();
+
+      if (error || !newStop) {
+        throw new Error('Failed to add nearby stop');
+      }
+
+      setDays((prev) =>
+        prev.map((day) =>
+          day.id === selectedDay.id
+            ? { ...day, stops: [...(day.stops || []), newStop] }
+            : day
+        )
+      );
+    },
+    [selectedDay, trip.id, supabase]
+  );
+
   // Update a stop
   const handleUpdateStop = useCallback(
     async (stopId: string, updates: Partial<Stop>) => {
@@ -168,6 +217,40 @@ export default function TripClient({ trip, initialDays }: Props) {
     await handleReorderStops(selectedDay.id, optimized);
   }, [selectedDay, handleReorderStops]);
 
+  // Share to Google Maps
+  const handleShareToGoogleMaps = useCallback(() => {
+    if (!selectedDay || selectedDay.stops.length === 0) {
+      alert('Add stops to your itinerary first!');
+      return;
+    }
+
+    const stops = selectedDay.stops;
+    
+    // Build waypoints URL for Google Maps
+    // Format: https://www.google.com/maps/dir/?api=1&origin=START&destination=END&waypoints=WP1|WP2|etc
+    if (stops.length === 1) {
+      // Single stop - open it on the map
+      const stop = stops[0];
+      const url = `https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lng}`;
+      window.open(url, '_blank');
+    } else {
+      // Multiple stops - create a route
+      const origin = `${stops[0].lat},${stops[0].lng}`;
+      const destination = `${stops[stops.length - 1].lat},${stops[stops.length - 1].lng}`;
+      const waypoints = stops
+        .slice(1, -1)
+        .map((s) => `${s.lat},${s.lng}`)
+        .join('|');
+
+      let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+      if (waypoints) {
+        url += `&waypoints=${waypoints}`;
+      }
+
+      window.open(url, '_blank');
+    }
+  }, [selectedDay]);
+
   // Toggle share
   const handleToggleShare = useCallback(async () => {
     const newValue = !trip.share_enabled;
@@ -233,6 +316,7 @@ export default function TripClient({ trip, initialDays }: Props) {
             onSelectDay={setSelectedDayId}
             onAddStop={() => setShowAddStop(true)}
             onOptimizeRoute={handleOptimizeRoute}
+            onShareToMaps={handleShareToGoogleMaps}
             onStopClick={(stop) => {
               setSelectedStop(stop);
               handleStopClickInSidebar(stop);
@@ -277,6 +361,7 @@ export default function TripClient({ trip, initialDays }: Props) {
           onClose={() => setSelectedStop(null)}
           onUpdate={handleUpdateStop}
           onDelete={handleDeleteStop}
+          onAddNearbyStop={handleAddNearbyStop}
         />
       )}
     </div>
