@@ -1,14 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Stop, Category } from '@/lib/types';
-import { X, Edit2, Trash2, Save, MapPin, Clock, Timer, Tag } from 'lucide-react';
+import { X, Edit2, Trash2, Save, MapPin, Clock, Timer, Tag, Loader, Plus } from 'lucide-react';
+import { loadGoogleMaps } from '@/lib/google-maps/loader';
 
 interface Props {
   stop: Stop;
   onClose: () => void;
   onUpdate: (stopId: string, updates: Partial<Stop>) => void;
   onDelete: (stopId: string) => void;
+  onAddNearbyStop?: (stopData: {
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+    place_id: string;
+    category: string;
+  }) => Promise<void>;
+}
+
+interface NearbyPlace {
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  place_id: string;
+  distance: number;
 }
 
 const CATEGORY_CONFIG: Record<
@@ -40,6 +58,7 @@ export default function StopDetailModal({
   onClose,
   onUpdate,
   onDelete,
+  onAddNearbyStop,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editNotes, setEditNotes] = useState(stop.notes || '');
@@ -54,9 +73,81 @@ export default function StopDetailModal({
   );
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showNearby, setShowNearby] = useState(false);
+  const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
+  const [loadingNearby, setLoadingNearby] = useState(false);
+  const [addingPlace, setAddingPlace] = useState<string | null>(null);
 
   const categoryConfig =
     CATEGORY_CONFIG[stop.category as Category] || CATEGORY_CONFIG.other;
+
+  // Search for nearby vegetarian restaurants
+  const handleSearchNearby = async () => {
+    setLoadingNearby(true);
+    try {
+      await loadGoogleMaps();
+      
+      const service = new (window as any).google.maps.places.PlacesService(
+        document.createElement('div')
+      );
+
+      const request = {
+        location: new (window as any).google.maps.LatLng(stop.lat, stop.lng),
+        radius: 2400, // 1.5 miles in meters
+        keyword: 'vegetarian restaurant',
+        type: 'restaurant',
+      };
+
+      service.nearbySearch(request, (results: any, status: any) => {
+        if (
+          status ===
+          (window as any).google.maps.places.PlacesServiceStatus.OK &&
+          results
+        ) {
+          const places = results
+            .slice(0, 5)
+            .map((result: any) => ({
+              name: result.name,
+              address: result.vicinity,
+              lat: result.geometry.location.lat(),
+              lng: result.geometry.location.lng(),
+              place_id: result.place_id,
+              distance: Math.round(
+                (window as any).google.maps.geometry.spherical.computeDistanceBetween(
+                  new (window as any).google.maps.LatLng(stop.lat, stop.lng),
+                  result.geometry.location
+                ) * 0.000621371 * 10
+              ) / 10, // Convert to miles
+            }));
+          setNearbyPlaces(places);
+        }
+        setLoadingNearby(false);
+      });
+    } catch (error) {
+      console.error('Error searching nearby places:', error);
+      setLoadingNearby(false);
+    }
+  };
+
+  const handleAddNearbyPlace = async (place: NearbyPlace) => {
+    if (!onAddNearbyStop) return;
+    setAddingPlace(place.place_id);
+    try {
+      await onAddNearbyStop({
+        name: place.name,
+        address: place.address,
+        lat: place.lat,
+        lng: place.lng,
+        place_id: place.place_id,
+        category: 'food',
+      });
+      setNearbyPlaces(nearbyPlaces.filter((p) => p.place_id !== place.place_id));
+    } catch (error) {
+      console.error('Error adding nearby place:', error);
+    } finally {
+      setAddingPlace(null);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -192,9 +283,7 @@ export default function StopDetailModal({
                   <Clock className="w-4 h-4 text-gray-400 mx-auto mb-1" />
                   <p className="text-xs text-gray-400">Start</p>
                   <p className="text-sm font-medium text-gray-700 mt-0.5">
-                    {stop.start_time
-                      ? stop.start_time.slice(0, 5)
-                      : '—'}
+                    {stop.start_time ? stop.start_time.slice(0, 5) : '—'}
                   </p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3 text-center">
@@ -232,6 +321,80 @@ export default function StopDetailModal({
                   >
                     Add notes
                   </button>
+                </div>
+              )}
+
+              {/* Nearby Vegetarian Food Section */}
+              {onAddNearbyStop && (
+                <div className="border-t pt-4">
+                  <button
+                    onClick={() => {
+                      setShowNearby(!showNearby);
+                      if (!showNearby && nearbyPlaces.length === 0) {
+                        handleSearchNearby();
+                      }
+                    }}
+                    className="w-full flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🥗</span>
+                      <span className="text-sm font-medium text-green-700">
+                        Nearby Veg Food
+                      </span>
+                    </div>
+                    <span className="text-xs text-green-600 font-medium">
+                      {showNearby ? 'Hide' : 'Show'}
+                    </span>
+                  </button>
+
+                  {showNearby && (
+                    <div className="mt-3 space-y-2">
+                      {loadingNearby ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader className="w-4 h-4 animate-spin text-gray-400" />
+                          <span className="text-sm text-gray-400 ml-2">
+                            Searching...
+                          </span>
+                        </div>
+                      ) : nearbyPlaces.length > 0 ? (
+                        nearbyPlaces.map((place) => (
+                          <div
+                            key={place.place_id}
+                            className="flex items-start justify-between gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-green-200 transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {place.name}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {place.address}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                📍 {place.distance} miles away
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleAddNearbyPlace(place)}
+                              disabled={addingPlace === place.place_id}
+                              className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                            >
+                              {addingPlace === place.place_id ? (
+                                <Loader className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Plus className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-gray-400">
+                          <p className="text-sm">
+                            No vegetarian restaurants found nearby
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </>
