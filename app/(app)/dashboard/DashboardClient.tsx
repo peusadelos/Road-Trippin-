@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Trip, Profile } from '@/lib/types';
 import { formatFullDate, generateDays, getTripDuration } from '@/lib/utils/date-helpers';
-import { Plus, MapPin, Calendar, LogOut, Archive } from 'lucide-react';
+import { Plus, MapPin, Calendar, LogOut, Archive, BookOpen } from 'lucide-react';
 import CreateTripModal from '@/components/dashboard/CreateTripModal';
 
 interface Props {
@@ -98,6 +98,10 @@ export default function DashboardClient({ trips, profile }: Props) {
     router.push(`/trip/${tripId}`);
   };
 
+  const handleOpenJournal = (tripId: string) => {
+    router.push(`/trip/${tripId}/journal`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
@@ -170,9 +174,21 @@ export default function DashboardClient({ trips, profile }: Props) {
                     </span>
                   </div>
                 </div>
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                  Active
-                </span>
+                <div className="flex flex-col items-end gap-2">
+                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                    Active
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenJournal(activeTrip.id);
+                    }}
+                    className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-800 font-medium"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    Journal
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -205,11 +221,21 @@ export default function DashboardClient({ trips, profile }: Props) {
               {archivedTrips.map((trip) => (
                 <div
                   key={trip.id}
-                  onClick={() => handleOpenTrip(trip.id)}
+                  onClick={() =>
+                    trip.ended_at ? handleOpenJournal(trip.id) : handleOpenTrip(trip.id)
+                  }
                   className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:shadow-md transition-shadow opacity-75 hover:opacity-100"
                   style={{ borderLeft: `4px solid ${trip.cover_color}` }}
                 >
-                  <h3 className="font-bold text-gray-800">{trip.name}</h3>
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-bold text-gray-800">{trip.name}</h3>
+                    {trip.ended_at && (
+                      <span className="flex items-center gap-1 text-xs text-amber-700 font-medium flex-shrink-0">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        Journal
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500 mt-1">
                     {formatFullDate(trip.start_date)} →{' '}
                     {formatFullDate(trip.end_date)}
