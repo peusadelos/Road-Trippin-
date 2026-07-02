@@ -9,6 +9,7 @@ export interface Trip {
   is_active: boolean;
   share_enabled: boolean;
   share_token?: string;
+  ended_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,8 +21,20 @@ export interface TripDay {
   date: string;
   title?: string;
   notes?: string;
+  cover_photo_id?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface TripPhoto {
+  id: string;
+  trip_id: string;
+  stop_id: string;
+  user_id: string;
+  storage_path: string;
+  caption?: string | null;
+  sort_order: number;
+  created_at: string;
 }
 
 export interface Stop {
@@ -46,6 +59,11 @@ export interface Stop {
 
 export interface TripDayWithStops extends TripDay {
   stops: Stop[];
+}
+
+export interface TripDayWithPhotos extends TripDayWithStops {
+  photosByStop: Record<string, TripPhoto[]>;
+  coverPhotoUrl?: string;
 }
 
 export interface Profile {
