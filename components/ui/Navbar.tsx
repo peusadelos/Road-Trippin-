@@ -10,6 +10,7 @@ import {
   Copy,
   Globe,
   GlobeLock,
+  BookOpen,
 } from 'lucide-react';
 
 interface Props {
@@ -56,6 +57,13 @@ export default function Navbar({ trip, onToggleShare, onBack }: Props) {
 
       {/* Right */}
       <div className="flex items-center gap-2 relative">
+        <Link
+          href={`/trip/${trip.id}/journal`}
+          className="flex items-center gap-2 px-3 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+        >
+          <BookOpen className="w-4 h-4" />
+          <span className="hidden sm:block">Journal</span>
+        </Link>
         <button
           onClick={() => setShowShareMenu(!showShareMenu)}
           className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
